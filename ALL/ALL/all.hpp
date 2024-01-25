@@ -74,7 +74,7 @@
 #define ALL_WHITE			"\033[1;37m"
 #define ALL_DEFAULT			"\0"
 
-#define ALL_COLOR std::string
+typedef std::string all_Color;
 
 namespace all {
 class Logger
@@ -83,25 +83,25 @@ public:
 	~Logger() = default;
 	Logger(const Logger&) = delete;
 	Logger& operator = (const Logger&) = delete;
-
 	static Logger& getInstance()
 	{ static Logger s; return s; }
-
 	  //===============================================================================
 	  // string + variables
 	  //===============================================================================
 	template<typename ...Types>
 	void log(uint8_t mode, std::string first, Types&& ... args)
 	{
+		m_msg = std::stringstream();
 		m_msg << m_colors[mode];
 		m_msg << getTime() << m_type[mode];
 		output(first, args...);
-		m_msg << "\033[0m"; std::cout << m_msg.str() << std::endl;
+		m_msg << "\033[0m"; std::cout << m_msg.str() << "\n";
+		m_msg.flush();
 	}
 	//===============================================================================
 	// settings
 	//===============================================================================
-	void setColors(ALL_COLOR entryColor, ALL_COLOR infoColor, ALL_COLOR warningColor, ALL_COLOR errorColor)
+	void setColors(all_Color entryColor, all_Color infoColor, all_Color warningColor, all_Color errorColor)
 	{
 		m_colors[0] = (entryColor == "\0") ? ALL_WHITE : entryColor;
 		m_colors[1] = (infoColor == "\0") ? ALL_GREEN : infoColor;
@@ -111,7 +111,7 @@ public:
 private:
 	Logger() :m_timeStart(std::chrono::high_resolution_clock::now()) {}
 	const std::chrono::steady_clock::time_point m_timeStart;
-	const std::string m_type[3] = { "[ENT] ", "[INF] ", "[WAR] "};
+	const std::string m_type[4] = { "[ENT] ", "[INF] ", "[WAR] ", "[ERR] "};
 	std::string m_colors[4] = { ALL_WHITE, ALL_GREEN, ALL_YELLOW, ALL_RED};
 	std::stringstream m_msg;
 
@@ -124,20 +124,6 @@ private:
 		std::stringstream result;
 		result << "[" << std::setfill('0') << std::setw(2) << std::to_string(hours) << ":" << std::setw(2) << std::to_string(minutes) << ":" << std::setw(2) << std::to_string(seconds) << "]";
 		return result.str();
-	}
-
-	size_t findToken(const std::string& text, size_t* tlc0, size_t* tlc1)
-	{
-		size_t p0 = text.find("{");
-		if (text.find("}") - p0 == 2)
-		{ return p0; }
-		else
-		{ return std::string::npos; }
-	}
-	template<typename T>
-	void proccesToken(char token, T arg)
-	{
-		m_msg << arg;
 	}
 	//===============================================================================
 	// recursive output
@@ -161,6 +147,14 @@ private:
 			proccesToken(text[tlc0 + 1], arg);
 			output(text.substr(tlc0 + 3), args...);
 		}
+	}
+	//===============================================================================
+	// tokens processing
+	//===============================================================================
+	template<typename T>
+	void proccesToken(char token, T arg)
+	{
+		m_msg << arg;
 	}
 
 };
