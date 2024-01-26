@@ -85,18 +85,17 @@ public:
 	Logger& operator = (const Logger&) = delete;
 	static Logger& getInstance()
 	{ static Logger s; return s; }
-	  //===============================================================================
-	  // string + variables
-	  //===============================================================================
-	template<typename ...Types>
-	void log(uint8_t mode, std::string first, Types&& ... args)
+	//===============================================================================
+	// string + variables
+	//===============================================================================
+	template<typename T, typename ...Types>
+	void log(uint8_t mode, T first, Types&& ... args)
 	{
 		m_msg = std::stringstream();
 		m_msg << m_colors[mode];
 		m_msg << getTime() << m_type[mode];
 		output(first, args...);
 		m_msg << "\033[0m"; std::cout << m_msg.str() << "\n";
-		m_msg.flush();
 	}
 	//===============================================================================
 	// settings
@@ -128,10 +127,30 @@ private:
 	//===============================================================================
 	// recursive output
 	//===============================================================================
-	void output(const std::string& text)
-	{ m_msg << text; }
+	template<typename T>
+	void output(T arg)
+	{ m_msg << arg; }
 	template<typename T, typename ...Types>
-	void output(const std::string& text, T&& arg, Types&& ...args)
+	void output(const char* t, T&& arg, Types&& ...args)			//TODO Rethink and improve these two funcions. It works for now but it is disgusting!!!
+	{
+		const std::string text(t);
+		const size_t tlc0 = text.find("{");
+		const size_t tlc1 = text.find("}");
+		if (tlc0 == std::string::npos) { m_msg << text; }
+		else if (tlc1 - tlc0 != 2)
+		{
+			m_msg << text.substr(0, tlc1 + 1);
+			output(text.substr(tlc1 + 2), arg, args...);
+		}
+		else
+		{
+			m_msg << text.substr(0, tlc0);
+			proccesToken(text[tlc0 + 1], arg);
+			output(text.substr(tlc0 + 3), args...);
+		}
+	}
+	template<typename T, typename ...Types>
+	void output(std::string text, T&& arg, Types&& ...args)			//TODO Rethink and improve these two funcions. It works for now but it is disgusting!!!
 	{
 		const size_t tlc0 = text.find("{");
 		const size_t tlc1 = text.find("}");
@@ -147,6 +166,12 @@ private:
 			proccesToken(text[tlc0 + 1], arg);
 			output(text.substr(tlc0 + 3), args...);
 		}
+	}
+	template<typename T, typename ...Types>
+	void output(T&& arg, Types&& ...args)
+	{
+		m_msg << arg << ", ";
+		output(args...);
 	}
 	//===============================================================================
 	// tokens processing
