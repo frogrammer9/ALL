@@ -7,6 +7,7 @@
 #include<fstream>
 #include<chrono>
 #include<vector>
+#include<mutex>
 
 #ifndef ALL_DISABLE_ENT
 	#define ALL_ENT(first, ...) all::Logger::getInstance().log(all::Logger::logMode::ent, first, ## __VA_ARGS__)
@@ -77,6 +78,7 @@ public:
 	template<typename T, typename ...Types>
 	void log(logMode mode, T first, Types&& ... args)
 	{
+		const std::lock_guard<std::mutex> lg(m_mutex);
 		if (!m_toFile) m_msg << m_colors[static_cast<int>(mode)];
 		m_msg << getTime() << m_type[static_cast<int>(mode)];
 		output(first, args...);
@@ -110,6 +112,7 @@ private:
 	const std::string m_type[4] = { "[ENT] ", "[INF] ", "[WAR] ", "[ERR] "};
 	std::string m_colors[4] = { ALL_WHITE, ALL_GREEN, ALL_YELLOW, ALL_RED};
 	std::stringstream m_msg;
+	std::mutex m_mutex;
 	//===============================================================================
 	// helper funcions
 	//===============================================================================
