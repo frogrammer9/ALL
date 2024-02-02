@@ -1,51 +1,51 @@
+//NOLINTBEGIN
 #ifndef ALL
 #define ALL
 
 #include<iostream>
-#include<iomanip>
 #include<sstream>
 #include<fstream>
 #include<chrono>
 
 #if defined __GNUC__ || __clang__
 	#ifndef ALL_DISABLE_ENT
-		#define ALL_ENT(first, ...) all::Logger::getInstance().log(0, first, __VA_OPT__(,) __VA_ARGS__)
+		#define ALL_ENT(first, ...) all::Logger::getInstance().log(all::Logger::logMode::ent, first, __VA_OPT__(,) __VA_ARGS__)
 	#else
 		#define ALL_ENT(...)
 	#endif
 	#ifndef ALL_DISABLE_INF
-		#define ALL_INF(first, ...) all::Logger::getInstance().log(1, first, __VA_OPT__(,) __VA_ARGS__)
+		#define ALL_INF(first, ...) all::Logger::getInstance().log(all::Logger::logMode::inf, first, __VA_OPT__(,) __VA_ARGS__)
 	#else
 		#define ALL_INF(...)
 	#endif
 	#ifndef ALL_DISABLE_WAR
-		#define ALL_WAR(first, ...) all::Logger::getInstance().log(2, first, __VA_OPT__(,) __VA_ARGS__)
+		#define ALL_WAR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::war, first, __VA_OPT__(,) __VA_ARGS__)
 	#else
 		#define ALL_WAR(...)
 	#endif
 	#ifndef ALL_DISABLE_ERR
-		#define ALL_ERR(first, ...) all::Logger::getInstance().log(3, first, __VA_OPT__(,) __VA_ARGS__)
+		#define ALL_ERR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::err, first, __VA_OPT__(,) __VA_ARGS__)
 	#else
 		#define ALL_ERR(...)
 	#endif
 #elif defined _MSC_VER
 	#ifndef ALL_DISABLE_ENT
-		#define ALL_ENT(first, ...) all::Logger::getInstance().log(0, first, ## __VA_ARGS__)
+		#define ALL_ENT(first, ...) all::Logger::getInstance().log(all::Logger::logMode::ent, first, ## __VA_ARGS__)
 	#else
 		#define ALL_ENT(...)
 	#endif
 	#ifndef ALL_DISABLE_INF
-		#define ALL_INF(first, ...) all::Logger::getInstance().log(1, first, ## __VA_ARGS__)
+		#define ALL_INF(first, ...) all::Logger::getInstance().log(all::Logger::logMode::inf, first, ## __VA_ARGS__)
 	#else
 		#define ALL_INF(...)
 	#endif
 	#ifndef ALL_DISABLE_WAR
-		#define ALL_WAR(first, ...) all::Logger::getInstance().log(2, first, ## __VA_ARGS__)
+		#define ALL_WAR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::war, first, ## __VA_ARGS__)
 	#else
 		#define ALL_WAR(...)
 	#endif
 	#ifndef ALL_DISABLE_ERR
-		#define ALL_ERR(first, ...) all::Logger::getInstance().log(3, first, ## __VA_ARGS__)
+		#define ALL_ERR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::err, first, ## __VA_ARGS__)
 	#else
 		#define ALL_ERR(...)
 	#endif
@@ -73,10 +73,10 @@
 #define ALL_WHITE			"\033[1;37m"
 #define ALL_DEFAULT			"\0"
 
-#define ALL_LOG_MODE_ENT	0
-#define ALL_LOG_MODE_INF	1
-#define ALL_LOG_MODE_WAR	2
-#define ALL_LOG_MODE_ERR	3
+#define ALL_LOG_MODE_ENT	all::Logger::logMode::ent
+#define ALL_LOG_MODE_INF	all::Logger::logMode::inf
+#define ALL_LOG_MODE_WAR	all::Logger::logMode::war
+#define ALL_LOG_MODE_ERR	all::Logger::logMode::err
 
 typedef std::string all_color;
 
@@ -94,30 +94,33 @@ public:
 	Logger& operator = (const Logger&) = delete;
 	static Logger& getInstance()
 	{ static Logger s; return s; }
+	enum struct logMode {ent, inf, war, err};
 	//===============================================================================
-	// string + variables
+	// logging
 	//===============================================================================
 	template<typename T, typename ...Types>
-	void log(uint8_t mode, T first, Types&& ... args)
+	void log(logMode mode, T first, Types&& ... args)
 	{
-		if (!m_toFile) {
-			m_msg = std::stringstream();
-			m_msg << m_colors[mode];
-		}
-		m_msg << getTime() << m_type[mode];
+		if (!m_toFile) m_msg << m_colors[static_cast<int>(mode)];
+		m_msg << getTime() << m_type[static_cast<int>(mode)];
 		output(first, args...);
 		m_msg << '\n';
-		if (!m_toFile) { m_msg << "\033[0m"; std::cout << m_msg.str(); }
+		if (!m_toFile) { 
+			m_msg << "\033[0m";
+			if (mode != logMode::err) std::cout << m_msg.str(); 
+			else std::cerr << m_msg.str();
+			m_msg = std::stringstream();
+		}
 	}
 	//===============================================================================
 	// settings
 	//===============================================================================
 	void setColors(all_color entryColor, all_color infoColor, all_color warningColor, all_color errorColor)
 	{
-		m_colors[0] = (entryColor == "\0") ? ALL_WHITE : entryColor;
-		m_colors[1] = (infoColor == "\0") ? ALL_GREEN : infoColor;
-		m_colors[2] = (warningColor == "\0") ? ALL_YELLOW : warningColor;
-		m_colors[3] = (errorColor == "\0") ? ALL_RED : errorColor;
+		m_colors[0] = (entryColor	 == "\0") ? ALL_WHITE : entryColor;
+		m_colors[1] = (infoColor	 == "\0") ? ALL_GREEN : infoColor;
+		m_colors[2] = (warningColor	 == "\0") ? ALL_YELLOW : warningColor;
+		m_colors[3] = (errorColor	 == "\0") ? ALL_RED : errorColor;
 	}
 	void setFilePath(const std::string& filePath) 
 	{ m_filepath = filePath; m_toFile = true; }
@@ -142,7 +145,11 @@ private:
 		int minutes = (time - hours*3600) / 60;
 		int seconds = time - hours *3600 - minutes * 60;
 		std::stringstream result;
-		result << "[" << std::setfill('0') << std::setw(2) << std::to_string(hours) << ":" << std::setw(2) << std::to_string(minutes) << ":" << std::setw(2) << std::to_string(seconds) << "]";
+		std::string hfill = (hours < 10) ? "0" : "";
+		std::string mfill = (minutes < 10) ? "0" : "";
+		std::string sfill = (seconds < 10) ? "0" : "";
+
+		result << "[" << hfill << std::to_string(hours) << ":" << mfill << std::to_string(minutes) << ":" << sfill << std::to_string(seconds) << "]";
 		return result.str();
 	}
 	size_t findToken(const char* string) const
@@ -177,24 +184,54 @@ private:
 	}
 	template<typename T, typename ...Types>
 	void output(T&& arg, Types&& ...args)
-	{
-		m_msg << arg << ", ";
-		outputnostr(args...);
-	}
+	{ m_msg << arg << ", "; outputnostr(args...); }
 	template<typename T, typename ...Types>
 	void outputnostr(T&& arg, Types&& ...args)
-	{
-		m_msg << arg << ", ";
-		outputnostr(args...);
-	}
+	{ m_msg << arg << ", "; outputnostr(args...); }
 	//===============================================================================
 	// tokens processing
 	//===============================================================================
 	template<typename T>
 	void proccesToken(char token, T arg)
+	{ 
+		if(token == '0')
+			m_msg << arg;
+		else if (token == 'o')
+			m_msg << std::oct << arg << std::dec;
+		else if (token == 's')
+			m_msg << std::scientific << arg;
+		else if (token == 'x')
+			m_msg << std::uppercase << std::hex << arg << std::dec << std::nouppercase;
+		else
+			m_msg << '{' << token << '}';
+	}
+	void proccesToken(char token, const std::string& arg)
 	{
-		m_msg << arg;
+		if (token == 'i') {
+			try { m_msg << std::stoi(arg); }
+			catch (const std::invalid_argument& e) { m_msg << "{NaN}"; }
+			catch (const std::exception& e) { m_msg << '{' << e.what() << '}'; }
+		}
+		else if (token == 'u')
+			m_msg << std::uppercase << arg << std::nouppercase;
+		else if (token == 'm')
+			m_msg << &arg;
+		else
+			m_msg << '{' << token << '}';
+	}
+	void proccesToken(char token, const char* arg)
+	{
+		if (token == 'i') {
+			try { m_msg << std::stoi(arg); }
+			catch (const std::invalid_argument& e) { m_msg << "{NaN}"; }
+			catch (const std::exception& e) { m_msg << '{' << e.what() << '}'; }
+		}
+		else if (token == 'u')
+			m_msg << std::uppercase << arg << std::nouppercase;
+		else
+			m_msg << '{' << token << '}';
 	}
 };
 }
 #endif
+//NOLINTEND
