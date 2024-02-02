@@ -179,25 +179,12 @@ private:
 	}
 	void proccesToken(char token, const std::string& arg)
 	{
-		if (token == 'i') {
-			try { m_msg << std::stoi(arg); }
-			catch (const std::invalid_argument& e) { m_msg << "{NaN}"; }
-			catch (const std::exception& e) { m_msg << '{' << e.what() << '}'; }
-		}
-		else if (token == 'u') m_msg << std::uppercase << arg << std::nouppercase;
-		else if (token == 'm') m_msg << &arg;
-		else if (token == '0') m_msg << arg;
+		if (token == '0') m_msg << arg;
 		else m_msg << '{' << token << '}';
 	}
 	void proccesToken(char token, const char* arg)
 	{
-		if (token == 'i') {
-			try { m_msg << std::stoi(arg); }
-			catch (const std::invalid_argument& e) { m_msg << "{NaN}"; }
-			catch (const std::exception& e) { m_msg << '{' << e.what() << '}'; }
-		}
-		else if (token == 'u') m_msg << std::uppercase << arg << std::nouppercase;
-		else if (token == '0') m_msg << arg;
+		if (token == '0') m_msg << arg;
 		else m_msg << '{' << token << '}';
 	}
 	template<typename T>
