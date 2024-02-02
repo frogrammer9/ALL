@@ -6,51 +6,27 @@
 #include<sstream>
 #include<fstream>
 #include<chrono>
+#include<vector>
 
-#if defined __GNUC__ || __clang__
-	#ifndef ALL_DISABLE_ENT
-		#define ALL_ENT(first, ...) all::Logger::getInstance().log(all::Logger::logMode::ent, first, __VA_OPT__(,) __VA_ARGS__)
-	#else
-		#define ALL_ENT(...)
-	#endif
-	#ifndef ALL_DISABLE_INF
-		#define ALL_INF(first, ...) all::Logger::getInstance().log(all::Logger::logMode::inf, first, __VA_OPT__(,) __VA_ARGS__)
-	#else
-		#define ALL_INF(...)
-	#endif
-	#ifndef ALL_DISABLE_WAR
-		#define ALL_WAR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::war, first, __VA_OPT__(,) __VA_ARGS__)
-	#else
-		#define ALL_WAR(...)
-	#endif
-	#ifndef ALL_DISABLE_ERR
-		#define ALL_ERR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::err, first, __VA_OPT__(,) __VA_ARGS__)
-	#else
-		#define ALL_ERR(...)
-	#endif
-#elif defined _MSC_VER
-	#ifndef ALL_DISABLE_ENT
-		#define ALL_ENT(first, ...) all::Logger::getInstance().log(all::Logger::logMode::ent, first, ## __VA_ARGS__)
-	#else
-		#define ALL_ENT(...)
-	#endif
-	#ifndef ALL_DISABLE_INF
-		#define ALL_INF(first, ...) all::Logger::getInstance().log(all::Logger::logMode::inf, first, ## __VA_ARGS__)
-	#else
-		#define ALL_INF(...)
-	#endif
-	#ifndef ALL_DISABLE_WAR
-		#define ALL_WAR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::war, first, ## __VA_ARGS__)
-	#else
-		#define ALL_WAR(...)
-	#endif
-	#ifndef ALL_DISABLE_ERR
-		#define ALL_ERR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::err, first, ## __VA_ARGS__)
-	#else
-		#define ALL_ERR(...)
-	#endif
+#ifndef ALL_DISABLE_ENT
+	#define ALL_ENT(first, ...) all::Logger::getInstance().log(all::Logger::logMode::ent, first, ## __VA_ARGS__)
 #else
-	#error This library only supports MSVC, Clang and GNU
+	#define ALL_ENT(...)
+#endif
+#ifndef ALL_DISABLE_INF
+	#define ALL_INF(first, ...) all::Logger::getInstance().log(all::Logger::logMode::inf, first, ## __VA_ARGS__)
+#else
+	#define ALL_INF(...)
+#endif
+#ifndef ALL_DISABLE_WAR
+	#define ALL_WAR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::war, first, ## __VA_ARGS__)
+#else
+	#define ALL_WAR(...)
+#endif
+#ifndef ALL_DISABLE_ERR
+	#define ALL_ERR(first, ...) all::Logger::getInstance().log(all::Logger::logMode::err, first, ## __VA_ARGS__)
+#else
+	#define ALL_ERR(...)
 #endif
 
 #define ALL_LOG all::Logger::getInstance()
@@ -127,29 +103,25 @@ public:
 	void setFilePath(const char* filePath)
 	{ m_filepath = filePath; m_toFile = true; }
 private:
-	Logger() :m_timeStart(std::chrono::high_resolution_clock::now()) {}
+	Logger() :m_timeStart(std::chrono::steady_clock::now()) {}
 	const std::chrono::steady_clock::time_point m_timeStart;
 	bool m_toFile = false;
 	std::string m_filepath;
 	const std::string m_type[4] = { "[ENT] ", "[INF] ", "[WAR] ", "[ERR] "};
 	std::string m_colors[4] = { ALL_WHITE, ALL_GREEN, ALL_YELLOW, ALL_RED};
 	std::stringstream m_msg;
-
 	//===============================================================================
 	// helper funcions
 	//===============================================================================
 	std::string getTime()
 	{
-		int time = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - m_timeStart).count());
+		int time = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - m_timeStart).count());
 		int hours = time / 3600;
 		int minutes = (time - hours*3600) / 60;
 		int seconds = time - hours *3600 - minutes * 60;
 		std::stringstream result;
-		std::string hfill = (hours < 10) ? "0" : "";
-		std::string mfill = (minutes < 10) ? "0" : "";
-		std::string sfill = (seconds < 10) ? "0" : "";
-
-		result << "[" << hfill << std::to_string(hours) << ":" << mfill << std::to_string(minutes) << ":" << sfill << std::to_string(seconds) << "]";
+		result << "[" << ((hours < 10) ? "0" : "") << std::to_string(hours) << ":" << ((minutes < 10) ? "0" : "") << 
+			std::to_string(minutes) << ":" << ((seconds < 10) ? "0" : "") << std::to_string(seconds) << "]";
 		return result.str();
 	}
 	size_t findToken(const char* string) const
@@ -158,10 +130,7 @@ private:
 		if (string[1] == '\0') { return std::string::npos; }
 		size_t i = 0;
 		while (string[i + 2] != '\0')
-		{
-			if (string[i] == '{' && string[i + 2] == '}') { return i; }
-			i++;
-		}
+		{ if (string[i] == '{' && string[i + 2] == '}')  return i; i++; }
 		return std::string::npos;
 	}
 	//===============================================================================
@@ -212,12 +181,10 @@ private:
 			catch (const std::invalid_argument& e) { m_msg << "{NaN}"; }
 			catch (const std::exception& e) { m_msg << '{' << e.what() << '}'; }
 		}
-		else if (token == 'u')
-			m_msg << std::uppercase << arg << std::nouppercase;
-		else if (token == 'm')
-			m_msg << &arg;
-		else
-			m_msg << '{' << token << '}';
+		else if (token == 'u') m_msg << std::uppercase << arg << std::nouppercase;
+		else if (token == 'm') m_msg << &arg;
+		else if (token == '0') m_msg << arg;
+		else m_msg << '{' << token << '}';
 	}
 	void proccesToken(char token, const char* arg)
 	{
@@ -226,10 +193,34 @@ private:
 			catch (const std::invalid_argument& e) { m_msg << "{NaN}"; }
 			catch (const std::exception& e) { m_msg << '{' << e.what() << '}'; }
 		}
-		else if (token == 'u')
-			m_msg << std::uppercase << arg << std::nouppercase;
-		else
-			m_msg << '{' << token << '}';
+		else if (token == 'u') m_msg << std::uppercase << arg << std::nouppercase;
+		else if (token == '0') m_msg << arg;
+		else m_msg << '{' << token << '}';
+	}
+	template<typename T>
+	void proccesToken(char token, const std::vector<T>& arg)
+	{
+		if (token == '0') {
+			for (int i = 0; i < arg.size() - 1; ++i) 
+			{ m_msg << arg[i] << ", "; } 
+			m_msg << arg[arg.size()-1];
+		}
+		else if (token == 'i') {
+			for (int i = 0; i < arg.size() - 1; ++i) 
+			{ m_msg << i << ": " << arg[i] << ", "; }
+			m_msg << arg.size() - 1 << ": " << arg[arg.size() - 1];
+		}
+		else if (token == 's') {
+			m_msg << "\n";
+			for (int i = 0; i < arg.size(); ++i) 
+			{ m_msg << arg[i] << "\n"; }
+		}
+		else if (token == 'l') {
+			m_msg << "\n";
+			for (int i = 0; i < arg.size(); ++i) 
+			{ m_msg << i << ". " << arg[i] << "\n"; }
+		}
+		else m_msg << '{' << token << '}';
 	}
 };
 }
